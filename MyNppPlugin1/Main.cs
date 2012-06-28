@@ -20,7 +20,11 @@ namespace MyNppPlugin1
         static Bitmap tbBmp = Properties.Resources.star;
         static Bitmap tbBmp_tbTab = Properties.Resources.star_bmp;
         static Icon tbIcon = null;
-        static Object dummy = new Object();
+        static Object dummyForWin32Call = new Object();
+
+        //TODO avoid hardcode
+        internal const string SCRIPT_ROOT_FOLDER = "d:\\scripts\\NppRunPerl";
+        internal const string SCRIPT_FILE_NAME = "runperl_script.pl";
         #endregion
 
         #region " StartUp/CleanUp "
@@ -55,14 +59,25 @@ namespace MyNppPlugin1
         internal static void myMenuFunction()
         {
             if (!checkIfScriptIsOpen()) {
-                //TODO avoid hardcode
-                Win32.SendMessage(PluginBase.nppData._nppHandle, NppMsg.NPPM_DOOPEN, 0, @"d:\\scripts\\runperl_script.pl");
-                MessageBox.Show("File not open");
+                Win32.SendMessage(PluginBase.nppData._nppHandle, NppMsg.NPPM_DOOPEN, 0, SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME);
+                MessageBox.Show("DEBUG: File not open");
             } else {
                 string currentFileName = getCurrentFileName();
-                //TODO edit script to use a temp file to store result 
-                runInCommandLine("perl d:\\scripts\\runperl_runner.pl d:\\scripts\\runperl_script.pl '" + currentFileName + "' > d:\\tmp\\output.txt");
+                runInCommandLine("perl " + SCRIPT_ROOT_FOLDER + "\\runperl_runner.pl "
+                    + SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME
+                    + " \"" + currentFileName
+                    + "\" > " + SCRIPT_ROOT_FOLDER + "\\command_line_output.txt");
+                MessageBox.Show("DEBUG: script executed");
                 //TODO copy result from temp file to current file(replace)
+                try {
+                    System.IO.StreamReader outputFile = new System.IO.StreamReader(SCRIPT_ROOT_FOLDER + "\\runperl_output.txt");
+                    string output = outputFile.ReadToEnd();
+                    outputFile.Close();
+                    MessageBox.Show(output);
+                    Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_SETTEXT, 0, output);
+                } catch (Exception e) {
+                    reportError(e.ToString(), e);
+                }
             }
         }
         internal static void myDockableDialog()
@@ -107,11 +122,8 @@ namespace MyNppPlugin1
         internal static bool checkIfScriptIsOpen()
         {
             bool result = false;
-            int nbFile = (int)Win32.SendMessage(PluginBase.nppData._nppHandle, NppMsg.NPPM_GETNBOPENFILES, 0, 0);
             foreach (string file in getOpenFiles()) {
-                //TODO avoid hardcode
-                if (file.ToLower().Equals("d:\\scripts\\runperl_script.pl"))
-                {
+                if (file.ToLower().Equals(SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME, StringComparison.OrdinalIgnoreCase)) {
                     result = true;
                 }
             }
@@ -128,9 +140,9 @@ namespace MyNppPlugin1
         }
         //This workaround was put here because NPPM_GETFULLCURRENTPATH doesn't seem to work correctly
         internal static string getCurrentFileName() {
-            int capacity = Win32Ext.GetWindowTextLength(new HandleRef(dummy, PluginBase.nppData._nppHandle)) * 2;
+            int capacity = Win32Ext.GetWindowTextLength(new HandleRef(dummyForWin32Call, PluginBase.nppData._nppHandle)) * 2;
             StringBuilder stringBuilder = new StringBuilder(capacity);
-            Win32Ext.GetWindowText(new HandleRef(dummy, PluginBase.nppData._nppHandle), stringBuilder, stringBuilder.Capacity);
+            Win32Ext.GetWindowText(new HandleRef(dummyForWin32Call, PluginBase.nppData._nppHandle), stringBuilder, stringBuilder.Capacity);
             string windowTitle = stringBuilder.ToString();
             return windowTitle.Substring(0, windowTitle.IndexOf(" - Notepad++"));
 
@@ -155,7 +167,6 @@ namespace MyNppPlugin1
             return null;*/
         }
         internal static void runInCommandLine(string command) {
-            MessageBox.Show("DEBUG: running command:\n" + command);
             try
             {
                 //TODO uncomment window hiding code
@@ -186,22 +197,30 @@ namespace MyNppPlugin1
                     + "'\n" + objException.ToString());
             }
         }
-        internal static void reportError(string message, Type exceptionType) {
+
+        internal static void reportError(string message, Exception exception) {
             MessageBox.Show(message);
+            if (exception != null) {
+                throw exception;
+            }
+        }
+
+        internal static void reportError(string message, Type exceptionType) {
             if (exceptionType != null) {
                 Object exception = exceptionType.GetConstructor(new Type[] { message.GetType() }).Invoke(new Object[] { message });
                 if (exception != null) {
-                    throw (Exception)exception;
+                    reportError(message, (Exception)exception);
                 } else {
                     reportError("Could not create an exception of type " + exceptionType.FullName);
                 }
             }
         }
-        internal static void reportError(string message) {
-            reportError(message, null);
-        }
-        #endregion
 
+        internal static void reportError(string message) {
+            reportError(message, (Exception)null);
+        }
+
+        #endregion
 
         #region " Platform "
         class Win32Ext {
