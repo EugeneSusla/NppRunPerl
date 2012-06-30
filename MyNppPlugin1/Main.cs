@@ -7,6 +7,9 @@ using System.Text;
 using System.Windows.Forms;
 using NppPluginNET;
 
+//TODO No error when script doesn't compile
+//TODO Bring scripts to the plugin folder
+//TODO Make plugin configurable via gui
 namespace MyNppPlugin1
 {
     class Main
@@ -25,6 +28,7 @@ namespace MyNppPlugin1
         //TODO avoid hardcode
         internal const string SCRIPT_ROOT_FOLDER = "d:\\scripts\\NppRunPerl";
         internal const string SCRIPT_FILE_NAME = "runperl_script.pl";
+        internal const string SCRIPT_OUTPUT_FILE_NAME = "runperl_output.txt";
         #endregion
 
         #region " StartUp/CleanUp "
@@ -58,23 +62,30 @@ namespace MyNppPlugin1
         #region " Menu functions "
         internal static void myMenuFunction()
         {
+            //MessageBox.Show(getCurrentFileName());
             if (!checkIfScriptIsOpen()) {
                 Win32.SendMessage(PluginBase.nppData._nppHandle, NppMsg.NPPM_DOOPEN, 0, SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME);
-                MessageBox.Show("DEBUG: File not open");
             } else {
                 string currentFileName = getCurrentFileName();
-                runInCommandLine("perl " + SCRIPT_ROOT_FOLDER + "\\runperl_runner.pl "
+                string command = "perl " + SCRIPT_ROOT_FOLDER + "\\runperl_runner.pl "
                     + SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME
                     + " \"" + currentFileName
-                    + "\" > " + SCRIPT_ROOT_FOLDER + "\\command_line_output.txt");
-                MessageBox.Show("DEBUG: script executed");
-                //TODO copy result from temp file to current file(replace)
+                    + "\" > " + SCRIPT_ROOT_FOLDER + "\\command_line_output.txt";
+                //DEBUG
+                //Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_SETTEXT, 0, command);
+                runInCommandLine(command);
                 try {
-                    System.IO.StreamReader outputFile = new System.IO.StreamReader(SCRIPT_ROOT_FOLDER + "\\runperl_output.txt");
-                    string output = outputFile.ReadToEnd();
-                    outputFile.Close();
-                    MessageBox.Show(output);
-                    Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_SETTEXT, 0, output);
+                    string outputFilePath = SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_OUTPUT_FILE_NAME;
+                    if (File.Exists(outputFilePath)) {
+                        System.IO.StreamReader outputFile = new System.IO.StreamReader(outputFilePath);
+                        string output = outputFile.ReadToEnd();
+                        outputFile.Close();
+                        File.Delete(outputFilePath);
+                        Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_SETTEXT, 0, output);
+                    } else {
+                        //TODO output more info about compilation error
+                        reportError("No output file found.\nThis is likely due to a compilation error.");
+                    }
                 } catch (Exception e) {
                     reportError(e.ToString(), e);
                 }
@@ -145,56 +156,23 @@ namespace MyNppPlugin1
             Win32Ext.GetWindowText(new HandleRef(dummyForWin32Call, PluginBase.nppData._nppHandle), stringBuilder, stringBuilder.Capacity);
             string windowTitle = stringBuilder.ToString();
             return windowTitle.Substring(0, windowTitle.IndexOf(" - Notepad++"));
-
-            /*IntPtr fileName = Marshal.AllocHGlobal(Win32.MAX_PATH);
-            if (fileName.ToInt64() == 0) {
-                reportError("Failed to allocate memory with AllocHGlobal");
-            }
-            Win32.SendMessage(PluginBase.nppData._nppHandle, NppMsg.NPPM_GETFULLCURRENTPATH, fileName, Win32.MAX_PATH);
-            string result = Marshal.PtrToStringUni(fileName);
-            Marshal.FreeHGlobal(fileName);
-            return result;*/ 
-
-            /*string mangledFileName = Marshal.PtrToStringAuto(fileName).Substring(1);
-            foreach (string file in getOpenFiles()) {
-                if (file.Length == mangledFileName.Length + 1 && file.EndsWith(mangledFileName)) {
-                    return file;
-                } else {
-                    continue;
-                }
-            }
-            reportError("Current open file cannot be found among all the open files");
-            return null;*/
         }
-        internal static void runInCommandLine(string command) {
-            try
-            {
-                //TODO uncomment window hiding code
-
-                // create the ProcessStartInfo using "cmd" as the program to be run,
-                // and "/c " as the parameters.
-                // Incidentally, /c tells cmd that we want it to execute the command that follows,
-                // and then exit.
+        internal static string runInCommandLine(string command) {
+            try {
+                //MessageBox.Show(command);
                 System.Diagnostics.ProcessStartInfo procStartInfo =
                     new System.Diagnostics.ProcessStartInfo("cmd", "/c " + command);
-
-                // The following commands are needed to redirect the standard output.
-                // This means that it will be redirected to the Process.StandardOutput StreamReader.
-                //procStartInfo.RedirectStandardOutput = true;
-                //procStartInfo.UseShellExecute = false;
-                // Do not create the black window.
-                //procStartInfo.CreateNoWindow = true;
-                // Now we create a process, assign its ProcessStartInfo and start it
+                procStartInfo.RedirectStandardOutput = true;
+                procStartInfo.UseShellExecute = false;
+                procStartInfo.CreateNoWindow = true;
                 System.Diagnostics.Process proc = System.Diagnostics.Process.Start(procStartInfo);
-                // Get the output into a string
-                //string result = proc.StandardOutput.ReadToEnd();
-                // Display the command output.
-                //Console.WriteLine(result);
-            }
-            catch (Exception objException)
-            {
-                MessageBox.Show("Exception while trying to run a command line command:\n'" + command
-                    + "'\n" + objException.ToString());
+                string strOutput = proc.StandardOutput.ReadToEnd();
+                proc.WaitForExit();
+                return strOutput;
+            } catch (Exception e) {
+                reportError("Exception while trying to run a command line command:\n'" + command
+                    + "'\n" + e.ToString(), e);
+                return null;
             }
         }
 
