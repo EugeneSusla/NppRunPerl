@@ -42,7 +42,7 @@ namespace MyNppPlugin1
             someSetting = (Win32.GetPrivateProfileInt("SomeSection", "SomeKey", 0, iniFilePath) != 0);
 
             PluginBase.SetCommand(0, "DEBUG", myMenuFunction, new ShortcutKey(false, false, false, Keys.None));
-            PluginBase.SetCommand(1, "MyDockableDialog", myDockableDialog); idMyDlg = 1;
+            PluginBase.SetCommand(1, "Show Dockable Dialog", myDockableDialog); idMyDlg = 1;
         }
         internal static void SetToolBarIcon()
         {
@@ -60,23 +60,30 @@ namespace MyNppPlugin1
         #endregion
 
         #region " Menu functions "
+
+        //TODO refactor : extract methods
         internal static void myMenuFunction()
         {
             //MessageBox.Show(getCurrentFileName());
+
+            
+
             if (!checkIfScriptIsOpen()) {
                 //Open script file
                 Win32.SendMessage(PluginBase.nppData._nppHandle, NppMsg.NPPM_DOOPEN, 0, SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME);
                 //Move it to other view
                 Win32.SendMessage(PluginBase.nppData._nppHandle, NppMsg.NPPM_MENUCOMMAND, 0, NppMenuCmd.IDM_VIEW_GOTO_ANOTHER_VIEW);
             } else {
-                string currentFileName = getCurrentFileName();
+                //string inputFileName = getCurrentFileName();
+                string inputFileName = SCRIPT_ROOT_FOLDER + "\\" + "runperl_input.txt";
+                writeInputToFile(inputFileName);
                 string command = "perl " + SCRIPT_ROOT_FOLDER + "\\runperl_runner.pl "
                     + SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME
-                    + " \"" + currentFileName
+                    + " \"" + inputFileName
                     + "\"";// +" > " + SCRIPT_ROOT_FOLDER + "\\command_line_output.txt";
                 //DEBUG
                 //Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_SETTEXT, 0, command);
-                MessageBox.Show(runInCommandLine(command));
+                runInCommandLine(command);
                 try {
                     string outputFilePath = SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_OUTPUT_FILE_NAME;
                     if (File.Exists(outputFilePath)) {
@@ -84,8 +91,7 @@ namespace MyNppPlugin1
                         string output = outputFile.ReadToEnd();
                         outputFile.Close();
                         File.Delete(outputFilePath);
-                        //Replace text in currently active text area with output
-                        Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_SETTEXT, 0, output);
+                        placeOutput(output);
                     } else {
                         //TODO output more info about compilation error
                         reportError("No output file found.\nThis is likely due to a compilation error.");
@@ -153,7 +159,7 @@ namespace MyNppPlugin1
                     return null;
             }
         }
-        //This workaround was put here because NPPM_GETFULLCURRENTPATH doesn't seem to work correctly
+        //TODO remove
         internal static string getCurrentFileName() {
             int capacity = Win32Ext.GetWindowTextLength(new HandleRef(dummyForWin32Call, PluginBase.nppData._nppHandle)) * 2;
             StringBuilder stringBuilder = new StringBuilder(capacity);
@@ -178,6 +184,52 @@ namespace MyNppPlugin1
                     + "'\n" + e.ToString(), e);
                 return null;
             }
+        }
+
+        internal static void placeOutput(string output) {
+            SciMsg command;
+            if (isAnythingSelected()) {
+                //Replace selection with output
+                command = SciMsg.SCI_REPLACESEL;
+            } else {
+                //Replace text in currently active text area with output
+                command = SciMsg.SCI_SETTEXT;
+            }
+            Win32.SendMessage(PluginBase.GetCurrentScintilla(), command, 0, output);
+        }
+
+        internal static void writeInputToFile(string fileName) {
+            string input = getInput();
+            System.IO.StreamWriter writer = new System.IO.StreamWriter(fileName);
+            writer.Write(input);
+            writer.Close();
+        }
+
+        internal static string getInput() {
+            string selection = getSelection();
+            if (!isAnythingSelected(selection)) {
+                //Use whole file
+                int textLength = (int)Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_GETLENGTH, 0, 0);
+                StringBuilder sb = new StringBuilder(textLength);
+                Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_GETTEXT, textLength, sb);
+                return sb.ToString();
+            } else {
+                return selection;
+            }
+        }
+
+        internal static string getSelection() {
+            StringBuilder sb = new StringBuilder(Win32.MAX_PATH);
+            Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_GETSELTEXT, 0, sb);
+            return sb.ToString();
+        }
+
+        internal static bool isAnythingSelected() {
+            return isAnythingSelected(getSelection());
+        }
+
+        internal static bool isAnythingSelected(string selection) {
+            return selection.Length > 0;
         }
 
         internal static void reportError(string message, Exception exception) {
