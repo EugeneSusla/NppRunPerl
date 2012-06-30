@@ -64,16 +64,19 @@ namespace MyNppPlugin1
         {
             //MessageBox.Show(getCurrentFileName());
             if (!checkIfScriptIsOpen()) {
+                //Open script file
                 Win32.SendMessage(PluginBase.nppData._nppHandle, NppMsg.NPPM_DOOPEN, 0, SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME);
+                //Move it to other view
+                Win32.SendMessage(PluginBase.nppData._nppHandle, NppMsg.NPPM_MENUCOMMAND, 0, NppMenuCmd.IDM_VIEW_GOTO_ANOTHER_VIEW);
             } else {
                 string currentFileName = getCurrentFileName();
                 string command = "perl " + SCRIPT_ROOT_FOLDER + "\\runperl_runner.pl "
                     + SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME
                     + " \"" + currentFileName
-                    + "\" > " + SCRIPT_ROOT_FOLDER + "\\command_line_output.txt";
+                    + "\"";// +" > " + SCRIPT_ROOT_FOLDER + "\\command_line_output.txt";
                 //DEBUG
                 //Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_SETTEXT, 0, command);
-                runInCommandLine(command);
+                MessageBox.Show(runInCommandLine(command));
                 try {
                     string outputFilePath = SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_OUTPUT_FILE_NAME;
                     if (File.Exists(outputFilePath)) {
@@ -81,6 +84,7 @@ namespace MyNppPlugin1
                         string output = outputFile.ReadToEnd();
                         outputFile.Close();
                         File.Delete(outputFilePath);
+                        //Replace text in currently active text area with output
                         Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_SETTEXT, 0, output);
                     } else {
                         //TODO output more info about compilation error
@@ -166,8 +170,8 @@ namespace MyNppPlugin1
                 procStartInfo.UseShellExecute = false;
                 procStartInfo.CreateNoWindow = true;
                 System.Diagnostics.Process proc = System.Diagnostics.Process.Start(procStartInfo);
-                string strOutput = proc.StandardOutput.ReadToEnd();
                 proc.WaitForExit();
+                string strOutput = proc.StandardOutput.ReadToEnd();
                 return strOutput;
             } catch (Exception e) {
                 reportError("Exception while trying to run a command line command:\n'" + command
