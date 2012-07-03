@@ -7,7 +7,6 @@ using System.Text;
 using System.Windows.Forms;
 using NppPluginNET;
 
-//TODO No error when script doesn't compile
 //TODO Bring scripts to the plugin folder
 //TODO Make plugin configurable via gui
 namespace MyNppPlugin1
@@ -42,7 +41,9 @@ namespace MyNppPlugin1
             someSetting = (Win32.GetPrivateProfileInt("SomeSection", "SomeKey", 0, iniFilePath) != 0);
 
             PluginBase.SetCommand(0, "DEBUG", myMenuFunction, new ShortcutKey(false, false, false, Keys.None));
-            PluginBase.SetCommand(1, "Show Dockable Dialog", myDockableDialog); idMyDlg = 1;
+            PluginBase.SetCommand(1, "Run scommand line", runInCommandLine, new ShortcutKey(false, false, false, Keys.None));
+            PluginBase.SetCommand(2, "Show Dockable Dialog", myDockableDialog); 
+            idMyDlg = 1;
         }
         internal static void SetToolBarIcon()
         {
@@ -83,23 +84,31 @@ namespace MyNppPlugin1
                     + "\"";// +" > " + SCRIPT_ROOT_FOLDER + "\\command_line_output.txt";
                 //DEBUG
                 //Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_SETTEXT, 0, command);
-                runInCommandLine(command);
-                try {
-                    string outputFilePath = SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_OUTPUT_FILE_NAME;
-                    if (File.Exists(outputFilePath)) {
-                        System.IO.StreamReader outputFile = new System.IO.StreamReader(outputFilePath);
-                        string output = outputFile.ReadToEnd();
-                        outputFile.Close();
-                        File.Delete(outputFilePath);
-                        placeOutput(output);
-                    } else {
-                        //TODO output more info about compilation error
-                        reportError("No output file found.\nThis is likely due to a compilation error.");
+                CommandLineOutput commandLineOutput = runInCommandLine(command);
+                if (!commandLineOutput.ErrorsPresent()) {
+                    try {
+                        string outputFilePath = SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_OUTPUT_FILE_NAME;
+                        if (File.Exists(outputFilePath)) {
+                            System.IO.StreamReader outputFile = new System.IO.StreamReader(outputFilePath);
+                            string output = outputFile.ReadToEnd();
+                            outputFile.Close();
+                            File.Delete(outputFilePath);
+                            placeOutput(output);
+                        }
+                        else {
+                            reportError("No output file found");
+                        }
                     }
-                } catch (Exception e) {
-                    reportError(e.ToString(), e);
+                    catch (Exception e) {
+                        reportError(e.ToString(), e);
+                    }
                 }
             }
+        }
+        internal static void runInCommandLine() {
+            string command = getInput();
+            CommandLineOutput output = runInCommandLine(command, false);
+            MessageBox.Show(output.ToString());
         }
         internal static void myDockableDialog()
         {
@@ -167,18 +176,29 @@ namespace MyNppPlugin1
             string windowTitle = stringBuilder.ToString();
             return windowTitle.Substring(0, windowTitle.IndexOf(" - Notepad++"));
         }
-        internal static string runInCommandLine(string command) {
+
+        internal static CommandLineOutput runInCommandLine(string command) {
+            return runInCommandLine(command, true);
+        }
+
+        internal static CommandLineOutput runInCommandLine(string command, bool doReportError) {
             try {
                 //MessageBox.Show(command);
                 System.Diagnostics.ProcessStartInfo procStartInfo =
                     new System.Diagnostics.ProcessStartInfo("cmd", "/c " + command);
                 procStartInfo.RedirectStandardOutput = true;
+                procStartInfo.RedirectStandardError = true;
                 procStartInfo.UseShellExecute = false;
                 procStartInfo.CreateNoWindow = true;
                 System.Diagnostics.Process proc = System.Diagnostics.Process.Start(procStartInfo);
-                proc.WaitForExit();
                 string strOutput = proc.StandardOutput.ReadToEnd();
-                return strOutput;
+                string strError = proc.StandardError.ReadToEnd();
+                proc.WaitForExit();
+                CommandLineOutput result = new CommandLineOutput(strOutput, strError);
+                if (doReportError && result.ErrorsPresent()) {
+                    reportError(strError);
+                }
+                return result;
             } catch (Exception e) {
                 reportError("Exception while trying to run a command line command:\n'" + command
                     + "'\n" + e.ToString(), e);

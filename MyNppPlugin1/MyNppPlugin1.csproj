@@ -60,6 +60,7 @@
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CommandLineOutput.cs" />
     <Compile Include="DllExport\DllExportAttribute.cs" />
     <Compile Include="Forms\frmMyDlg.cs">
       <SubType>Form</SubType>
