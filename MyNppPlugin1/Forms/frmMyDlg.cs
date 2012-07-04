@@ -5,7 +5,7 @@ using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
 
-namespace MyNppPlugin1
+namespace NppRunPerl
 {
     public partial class frmMyDlg : Form
     {

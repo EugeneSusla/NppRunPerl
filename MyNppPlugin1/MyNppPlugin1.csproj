@@ -7,8 +7,8 @@
     <ProjectGuid>{E56F6E12-089C-40ED-BCFD-923E5FA121A1}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MyNppPlugin1</RootNamespace>
-    <AssemblyName>MyNppPlugin1</AssemblyName>
+    <RootNamespace>NppRunPerl</RootNamespace>
+    <AssemblyName>NppRunPerl</AssemblyName>
     <OutputPath>bin\Debug\</OutputPath>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileUpgradeFlags>

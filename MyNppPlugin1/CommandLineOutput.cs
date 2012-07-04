@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace MyNppPlugin1 {
+namespace NppRunPerl {
     class CommandLineOutput {
         private string output;
         private string error;

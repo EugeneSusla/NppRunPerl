@@ -7,14 +7,14 @@ using System.Text;
 using System.Windows.Forms;
 using NppPluginNET;
 
-//TODO Bring scripts to the plugin folder
+//TODO Clean up template-generated code
 //TODO Make plugin configurable via gui
-namespace MyNppPlugin1
+namespace NppRunPerl
 {
     class Main
     {
         #region " Fields "
-        internal const string PluginName = "MyNppPlugin1";
+        internal const string PluginName = "NppRunPerl";
         static string iniFilePath = null;
         static bool someSetting = false;
         static frmMyDlg frmMyDlg = null;
@@ -24,10 +24,11 @@ namespace MyNppPlugin1
         static Icon tbIcon = null;
         static Object dummyForWin32Call = new Object();
 
-        //TODO avoid hardcode
-        internal const string SCRIPT_ROOT_FOLDER = "d:\\scripts\\NppRunPerl";
+        internal const string SCRIPT_ROOT_FOLDER = "plugins\\" + PluginName;
         internal const string SCRIPT_FILE_NAME = "runperl_script.pl";
         internal const string SCRIPT_OUTPUT_FILE_NAME = "runperl_output.txt";
+        internal const string SCRIPT_INPUT_FILE_NAME = "runperl_intput.txt";
+        internal const string SCRIPT_RUNNER_FILE_NAME = "runperl_runner.pl";
         #endregion
 
         #region " StartUp/CleanUp "
@@ -41,7 +42,7 @@ namespace MyNppPlugin1
             someSetting = (Win32.GetPrivateProfileInt("SomeSection", "SomeKey", 0, iniFilePath) != 0);
 
             PluginBase.SetCommand(0, "DEBUG", myMenuFunction, new ShortcutKey(false, false, false, Keys.None));
-            PluginBase.SetCommand(1, "Run scommand line", runInCommandLine, new ShortcutKey(false, false, false, Keys.None));
+            PluginBase.SetCommand(1, "Run cmd", runInCommandLine, new ShortcutKey(false, false, false, Keys.None));
             PluginBase.SetCommand(2, "Show Dockable Dialog", myDockableDialog); 
             idMyDlg = 1;
         }
@@ -65,26 +66,26 @@ namespace MyNppPlugin1
         //TODO refactor : extract methods
         internal static void myMenuFunction()
         {
-            //MessageBox.Show(getCurrentFileName());
-
-            
-
-            if (!checkIfScriptIsOpen()) {
+            string scriptFileName = SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME;
+            if (!checkIfScriptIsOpen(scriptFileName)) {
                 //Open script file
-                Win32.SendMessage(PluginBase.nppData._nppHandle, NppMsg.NPPM_DOOPEN, 0, SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME);
+                Win32.SendMessage(PluginBase.nppData._nppHandle, NppMsg.NPPM_DOOPEN, 0, scriptFileName);
                 //Move it to other view
                 Win32.SendMessage(PluginBase.nppData._nppHandle, NppMsg.NPPM_MENUCOMMAND, 0, NppMenuCmd.IDM_VIEW_GOTO_ANOTHER_VIEW);
             } else {
-                //string inputFileName = getCurrentFileName();
-                string inputFileName = SCRIPT_ROOT_FOLDER + "\\" + "runperl_input.txt";
+
+                //Get input
+                string inputFileName = SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_INPUT_FILE_NAME;
                 writeInputToFile(inputFileName);
-                string command = "perl " + SCRIPT_ROOT_FOLDER + "\\runperl_runner.pl "
-                    + SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME
+
+                //Run perl script on input
+                string command = "perl " + SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_RUNNER_FILE_NAME
+                    + " " + SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME
                     + " \"" + inputFileName
-                    + "\"";// +" > " + SCRIPT_ROOT_FOLDER + "\\command_line_output.txt";
-                //DEBUG
-                //Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_SETTEXT, 0, command);
+                    + "\"";
                 CommandLineOutput commandLineOutput = runInCommandLine(command);
+
+                //Output results
                 if (!commandLineOutput.ErrorsPresent()) {
                     try {
                         string outputFilePath = SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_OUTPUT_FILE_NAME;
@@ -94,8 +95,7 @@ namespace MyNppPlugin1
                             outputFile.Close();
                             File.Delete(outputFilePath);
                             placeOutput(output);
-                        }
-                        else {
+                        } else {
                             reportError("No output file found");
                         }
                     }
@@ -149,16 +149,17 @@ namespace MyNppPlugin1
         #endregion
 
         #region " Internal functions "
-        internal static bool checkIfScriptIsOpen()
-        {
+
+        internal static bool checkIfScriptIsOpen(string fileName) {
             bool result = false;
             foreach (string file in getOpenFiles()) {
-                if (file.ToLower().Equals(SCRIPT_ROOT_FOLDER + "\\" + SCRIPT_FILE_NAME, StringComparison.OrdinalIgnoreCase)) {
+                if (file.EndsWith(fileName, StringComparison.OrdinalIgnoreCase)) {
                     result = true;
                 }
             }
             return result;
         }
+
         internal static System.Collections.Generic.List<string> getOpenFiles() {
             int nbFile = (int)Win32.SendMessage(PluginBase.nppData._nppHandle, NppMsg.NPPM_GETNBOPENFILES, 0, 0);
             using (ClikeStringArray cStrArray = new ClikeStringArray(nbFile, Win32.MAX_PATH)) {
@@ -168,14 +169,15 @@ namespace MyNppPlugin1
                     return null;
             }
         }
+
         //TODO remove
-        internal static string getCurrentFileName() {
+        /*internal static string getCurrentFileName() {
             int capacity = Win32Ext.GetWindowTextLength(new HandleRef(dummyForWin32Call, PluginBase.nppData._nppHandle)) * 2;
             StringBuilder stringBuilder = new StringBuilder(capacity);
             Win32Ext.GetWindowText(new HandleRef(dummyForWin32Call, PluginBase.nppData._nppHandle), stringBuilder, stringBuilder.Capacity);
             string windowTitle = stringBuilder.ToString();
             return windowTitle.Substring(0, windowTitle.IndexOf(" - Notepad++"));
-        }
+        }*/
 
         internal static CommandLineOutput runInCommandLine(string command) {
             return runInCommandLine(command, true);
@@ -183,7 +185,6 @@ namespace MyNppPlugin1
 
         internal static CommandLineOutput runInCommandLine(string command, bool doReportError) {
             try {
-                //MessageBox.Show(command);
                 System.Diagnostics.ProcessStartInfo procStartInfo =
                     new System.Diagnostics.ProcessStartInfo("cmd", "/c " + command);
                 procStartInfo.RedirectStandardOutput = true;
@@ -234,6 +235,7 @@ namespace MyNppPlugin1
                 Win32.SendMessage(PluginBase.GetCurrentScintilla(), SciMsg.SCI_GETTEXT, textLength, sb);
                 return sb.ToString();
             } else {
+                //Use selected fragment
                 return selection;
             }
         }
