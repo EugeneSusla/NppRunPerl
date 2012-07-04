@@ -13,6 +13,11 @@ Func makeRelease()
 	Send("{F7}")
 	Sleep(2000)
 	FileCopy($inputFolderName & "\\NppRunPerl.dll", $outputFolderName, 1)
+	package()
+EndFunc
+
+Func package()
+	Run(@ComSpec & " /c ""d:\Program Files\7zip\App\7-Zip64\7z"" a -tzip bin.zip bin\*")
 EndFunc
 
 Func deploy()
