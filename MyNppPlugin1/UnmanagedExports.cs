@@ -38,7 +38,7 @@ namespace NppRunPerl
         static IntPtr getName()
         {
             if (_ptrPluginName == IntPtr.Zero)
-                _ptrPluginName = Marshal.StringToHGlobalUni(Main.PluginName);
+                _ptrPluginName = Marshal.StringToHGlobalUni(Main.PLUGIN_NAME);
             return _ptrPluginName;
         }
 

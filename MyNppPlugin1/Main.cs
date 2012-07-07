@@ -13,8 +13,10 @@ namespace NppRunPerl
     class Main
     {
         #region " Fields "
-        internal const string PluginName = "NppRunPerl";
-        internal const string SCRIPT_ROOT_FOLDER = "plugins\\" + PluginName + "\\";
+        internal const string PLUGIN_NAME = "NppRunPerl";
+        internal const bool RETHROW_EXCEPTIONS = false;
+
+        internal const string SCRIPT_ROOT_FOLDER = "plugins\\" + PLUGIN_NAME + "\\";
         internal const string SCRIPT_FILE_NAME = "runperl_script.pl";
         internal const string SCRIPT_OUTPUT_FILE_NAME = "runperl_output.txt";
         internal const string SCRIPT_INPUT_FILE_NAME = "runperl_input.txt";
@@ -238,7 +240,7 @@ namespace NppRunPerl
 
         internal static void reportError(string message, Exception exception) {
             MessageBox.Show(message);
-            if (exception != null) {
+            if (RETHROW_EXCEPTIONS && exception != null) {
                 throw exception;
             }
         }
