@@ -7,7 +7,6 @@ using System.Text;
 using System.Windows.Forms;
 using NppPluginNET;
 
-//TODO Format menu prettier :)
 //TODO Clean up c# code convention violations if any
 //TODO Clean up template-generated code
 namespace NppRunPerl
@@ -43,12 +42,13 @@ namespace NppRunPerl
             someSetting = (Win32.GetPrivateProfileInt("SomeSection", "SomeKey", 0, iniFilePath) != 0);
 
             int index = 0;
-            PluginBase.SetCommand(index++, "DEBUG", myMenuFunction, new ShortcutKey(false, false, false, Keys.None));
             PluginBase.SetCommand(index++, "Open script", openScript, new ShortcutKey(false, false, false, Keys.None));
             PluginBase.SetCommand(index++, "Run script on selection/file", runScript, new ShortcutKey(false, false, false, Keys.None));
             PluginBase.SetCommand(index++, "Open/Run script", openOrRunScript, new ShortcutKey(false, true, true, Keys.P));
+            PluginBase.SetCommand(index++, "---", null);
             PluginBase.SetCommand(index++, "Run selection in cmd", runInCommandLine, new ShortcutKey(false, false, false, Keys.None));
             PluginBase.SetCommand(index++, "Run selection in cmd (echo off)", runInCommandLineEchoOff, new ShortcutKey(false, true, true, Keys.C));
+            PluginBase.SetCommand(index++, "---", null);
             PluginBase.SetCommand(index++, "Configure launcher", openLauncher, new ShortcutKey(false, false, false, Keys.None));
             //PluginBase.SetCommand(index++, "Show Dockable Dialog", myDockableDialog); 
             idMyDlg = 1;
@@ -70,10 +70,6 @@ namespace NppRunPerl
 
         #region " Menu functions "
 
-        internal static void myMenuFunction() {
-            MessageBox.Show("Hello world");
-            //openOrRunScript();
-        }
         internal static void openScript() {
             openScriptIfNotYetOpen();
         }
