@@ -68,8 +68,7 @@ namespace NppRunPerl
                             File.Delete(outputFilePath);
                             File.Delete(inputFileName);
                             placeOutput(output);
-                        }
-                        else {
+                        } else {
                             reportError("No output file found");
                         }
                     }
@@ -82,9 +81,9 @@ namespace NppRunPerl
             }
         }
         internal static void openOrRunScript() {
-                if (!openScriptIfNotYetOpen()) {
-                    runScript();
-                }
+            if (!openScriptIfNotYetOpen()) {
+                runScript();
+            }
         }
         internal static void runInCommandLine() {
             runCommandLineScript(false);
@@ -143,7 +142,6 @@ namespace NppRunPerl
         }
 
         internal static void runCommandLineScript(bool echoOff) {
-            //string command = getInput();
             string commandScriptFile = SCRIPT_ROOT_FOLDER
                 + SCRIPT_INPUT_FILE_NAME.Substring(0, SCRIPT_INPUT_FILE_NAME.LastIndexOf('.')) + ".bat";
             StringBuilder prefix = new StringBuilder();
