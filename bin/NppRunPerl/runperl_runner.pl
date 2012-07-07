@@ -8,7 +8,7 @@ open FILE, "<".$ARGV[1] or die $!;
 print "File successfully opened\n";
 
 
-$outputFileName = substr($ARGV[0], 0, rindex($ARGV[0], '\\') + 1)."runperl_output.txt";
+$outputFileName = substr($ARGV[0], 0, rindex($ARGV[0], '\\') + 1).$ARGV[2];
 print "Output file: ".$outputFileName."\n";
 $result = "";
 while (<FILE>) { 
