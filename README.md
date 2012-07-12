@@ -2,7 +2,7 @@ NppRunPerl
 ==========
 
 A Notepad++ plugin to comfortably create and run a perl script to transform the current file or selection. 
------------------------------------------------------------------------------------------------------------
+- - -
 
 The user is prompted to implement a perl function(sub) (process : string -> string)
 That function will be run on each line of selected text(or whole file, if nothing is selected), and the output will replace the input.
